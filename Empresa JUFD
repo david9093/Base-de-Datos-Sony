@@ -1,0 +1,380 @@
+import sqlite3
+from tkinter import *
+from tkinter import messagebox, ttk
+from PIL import Image, ImageTk
+import hashlib
+import random
+
+# Función para generar empleados aleatoriamente según los departamentos
+def generate_employees():
+    # Conectar a la base de datos
+    conn = sqlite3.connect('empresa_sony.sqlite')
+    cursor = conn.cursor()
+
+    # Obtener los departamentos y sus presupuestos
+    cursor.execute("SELECT nombre, empleados, presupuesto FROM Departamentos")
+    departamentos = cursor.fetchall()
+
+    # Borrar los empleados existentes para regenerarlos según los cambios en los departamentos
+    cursor.execute("DELETE FROM Empleados")
+
+    # Para cada departamento, distribuir el sueldo entre los empleados
+    for departamento in departamentos:
+        nombre_departamento = departamento[0]
+        empleados = departamento[1]
+        presupuesto = departamento[2]
+
+        # Calcular el sueldo por empleado en base al presupuesto
+        sueldo_por_empleado = presupuesto / empleados if empleados != 0 else 0
+
+        # Insertar empleados de forma aleatoria
+        for _ in range(empleados):
+            nombre_empleado = f"Empleado_{random.randint(1, 1000)}"
+            edad = random.randint(20, 60)
+            celular = f"{random.randint(1000000000, 9999999999)}"
+            domicilio = f"Dirección {random.randint(1, 100)}"
+            
+            cursor.execute('''
+                INSERT INTO Empleados (nombre_completo, edad, celular, domicilio, departamento, sueldo)
+                VALUES (?, ?, ?, ?, ?, ?)
+            ''', (nombre_empleado, edad, celular, domicilio, nombre_departamento, sueldo_por_empleado))
+
+    # Confirmar los cambios y cerrar la conexión
+    conn.commit()
+    conn.close()
+    print("Empleados generados y datos insertados correctamente.")
+
+# Función para encriptar contraseñas
+def encrypt_password(password):
+    return hashlib.sha256(password.encode()).hexdigest()
+
+# Configuración de la base de datos SQLite
+def connect_db():
+    conn = sqlite3.connect('empresa_sony.sqlite')
+    cursor = conn.cursor()
+
+    # Eliminar tablas existentes
+    cursor.execute("DROP TABLE IF EXISTS Usuarios")
+    cursor.execute("DROP TABLE IF EXISTS Productos")
+    cursor.execute("DROP TABLE IF EXISTS Ventas")
+    cursor.execute("DROP TABLE IF EXISTS Departamentos")
+    cursor.execute("DROP TABLE IF EXISTS Empleados")
+
+    # Crear tablas detalladas
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS Usuarios (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT UNIQUE NOT NULL,
+            password TEXT NOT NULL
+        )
+    ''')
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS Productos (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            nombre TEXT NOT NULL,
+            descripcion TEXT NOT NULL,
+            precio REAL NOT NULL,
+            cantidad INTEGER NOT NULL
+        )
+    ''')
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS Ventas (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            producto_id INTEGER,
+            cliente TEXT NOT NULL,
+            pais TEXT NOT NULL,
+            cantidad INTEGER NOT NULL,
+            total REAL NOT NULL,
+            fecha TEXT NOT NULL,
+            FOREIGN KEY (producto_id) REFERENCES Productos(id)
+        )
+    ''')
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS Departamentos (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            nombre TEXT NOT NULL,
+            empleados INTEGER NOT NULL,
+            presupuesto REAL
+        )
+    ''')
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS Empleados (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            nombre_completo TEXT NOT NULL,
+            celular TEXT NOT NULL,
+            domicilio TEXT NOT NULL,
+            departamento TEXT NOT NULL,
+            sueldo REAL DEFAULT 0,
+            edad INTEGER NOT NULL
+        )
+    ''')
+
+    # Insertar datos iniciales
+    cursor.execute("INSERT OR IGNORE INTO Usuarios (username, password) VALUES (?, ?)",
+                   ('Administrador', encrypt_password('david2316')))
+    cursor.execute('''
+        INSERT OR IGNORE INTO Productos (nombre, descripcion, precio, cantidad)
+        VALUES ('Sony Walkman TPS-L2', 'Reproductor portátil de casetes icónico de Sony', 1500.00, 5000)
+    ''')
+    cursor.execute('''
+        INSERT OR IGNORE INTO Departamentos (nombre, empleados, presupuesto)
+        VALUES 
+        ('Comercial', 50, 100000), 
+        ('Logística', 10, 30000), 
+        ('Producción', 50, 150000), 
+        ('Administración', 10, 40000), 
+        ('Recursos Humanos', 5, 30000)
+    ''')
+    cursor.execute('''
+        INSERT OR IGNORE INTO Ventas (producto_id, cliente, pais, cantidad, total, fecha)
+        VALUES (1, 'Carlos López', 'México', 3, 4500.00, '2024-11-30'),
+               (1, 'Ana Pérez', 'Estados Unidos', 2, 3000.00, '2024-12-01'),
+               (1, 'Juan Martínez', 'Argentina', 4, 6000.00, '2024-12-01'),
+               (1, 'Alice Johnson', 'Canadá', 1, 1500.00, '2024-12-02'),
+               (1, 'Michael Brown', 'Reino Unido', 2, 3000.00, '2024-12-02'),
+               (1, 'Diego Ramírez', 'Chile', 1, 5000.00, '2024-12-03'),
+               (1, 'Laura Gómez', 'Colombia', 5, 7500.00, '2024-12-03'),
+               (1, 'Tomás Fernández', 'España', 2, 3000.00, '2024-12-04'),
+               (1, 'Emily Wilson', 'Australia', 1, 1500.00, '2024-12-04'),
+               (1, 'Andrés Morales', 'Perú', 3, 4500.00, '2024-12-05'),
+               (1, 'Isabella Rossi', 'Italia', 1, 1500.00, '2024-12-05'),
+               (1, 'James Clark', 'Alemania', 1, 1500.00, '2024-12-06'),
+               (1, 'Sophia Nguyen', 'Vietnam', 2, 3000.00, '2024-12-06'),
+               (1, 'Oscar Hernández', 'Uruguay', 4, 6000.00, '2024-12-07'),
+               (1, 'Gabriel Silva', 'Portugal', 1, 1500.00, '2024-12-07'),
+               (1, 'Julia Brown', 'Sudáfrica', 1, 1500.00, '2024-12-08'),
+               (1, 'Lucas Castro', 'Brasil', 6, 9000.00, '2024-12-08'),
+               (1, 'Emma White', 'Japón', 2, 3000.00, '2024-12-09'),
+               (1, 'Liam Smith', 'Corea del Sur', 3, 4500.00, '2024-12-09'),
+               (1, 'Eva Kim', 'China', 4, 6000.00, '2024-12-10')
+    ''')
+    # Confirmar creación de tablas e inserción inicial
+    conn.commit()
+    conn.close()
+
+    # Generar empleados iniciales
+    generate_employees()
+    print("Base de datos configurada y empleados iniciales generados.")
+
+def manage_employees():
+    crud_operations('Empleados', ['nombre_completo', 'celular', 'domicilio', 'departamento', 'sueldo', 'edad'])
+
+
+# Función para manejar operaciones CRUD
+def crud_operations(table_name, fields):
+    def refresh_table():
+        for row in tree.get_children():
+            tree.delete(row)
+        conn = sqlite3.connect('empresa_sony.sqlite')
+        cursor = conn.cursor()
+        cursor.execute(f"SELECT * FROM {table_name}")
+        rows = cursor.fetchall()
+        for row in rows:
+            tree.insert("", END, values=row)
+        conn.close()
+
+    def add_data():
+        data = [entry.get() for entry in entries]
+        placeholders = ", ".join(["?"] * len(data))
+        conn = sqlite3.connect('empresa_sony.sqlite')
+        cursor = conn.cursor()
+        cursor.execute(f"INSERT INTO {table_name} ({', '.join(fields)}) VALUES ({placeholders})", data)
+        conn.commit()
+        conn.close()
+        messagebox.showinfo("Éxito", "Datos agregados correctamente.")
+        refresh_table()
+
+    def delete_data():
+        selected_item = tree.selection()
+        if not selected_item:
+            messagebox.showwarning("Error", "Seleccione un elemento para eliminar.")
+            return
+        item = tree.item(selected_item[0])['values']
+        conn = sqlite3.connect('empresa_sony.sqlite')
+        cursor = conn.cursor()
+        cursor.execute(f"DELETE FROM {table_name} WHERE id = ?", (item[0],))
+        conn.commit()
+        conn.close()
+        messagebox.showinfo("Éxito", "Datos eliminados correctamente.")
+        refresh_table()
+
+    def edit_data():
+        selected_item = tree.selection()
+        if not selected_item:
+            messagebox.showwarning("Error", "Seleccione un elemento para editar.")
+            return
+        item = tree.item(selected_item[0])['values']
+        edit_window = Toplevel(root)
+        edit_window.title("Editar Datos")
+        edit_entries = []
+        for i, field in enumerate(fields):
+            Label(edit_window, text=field).grid(row=i, column=0, padx=5, pady=5)
+            entry = Entry(edit_window)
+            entry.insert(0, item[i + 1])
+            entry.grid(row=i, column=1, padx=5, pady=5)
+            edit_entries.append(entry)
+
+        def save_changes():
+            data = [entry.get() for entry in edit_entries]
+            conn = sqlite3.connect('empresa_sony.sqlite')
+            cursor = conn.cursor()
+            query = f"UPDATE {table_name} SET " + ", ".join([f"{field} = ?" for field in fields]) + " WHERE id = ?"
+            cursor.execute(query, data + [item[0]])
+            conn.commit()
+            conn.close()
+            messagebox.showinfo("Éxito", "Datos actualizados correctamente.")
+            edit_window.destroy()
+            refresh_table()
+
+        Button(edit_window, text="Guardar Cambios", command=save_changes).grid(row=len(fields), columnspan=2, pady=10)
+
+    # Ventana principal para CRUD
+    crud_window = Toplevel(root)
+    crud_window.title(f"Gestión de {table_name}")
+    frame = Frame(crud_window)
+    frame.pack(pady=10)
+
+    tree = ttk.Treeview(frame, columns=[f"col{i}" for i in range(len(fields) + 1)], show="headings")
+    tree.pack(side=LEFT, fill=BOTH, expand=True)
+    for i, field in enumerate(["ID"] + fields):
+        tree.heading(f"col{i}", text=field)
+        tree.column(f"col{i}", width=100)
+    refresh_table()
+
+    buttons_frame = Frame(crud_window)
+    buttons_frame.pack()
+
+    Button(buttons_frame, text="Agregar", command=add_data).pack(side=LEFT, padx=10)
+    Button(buttons_frame, text="Eliminar", command=delete_data).pack(side=LEFT, padx=10)
+    Button(buttons_frame, text="Editar", command=edit_data).pack(side=LEFT, padx=10)
+
+    entries = []
+    add_frame = Frame(crud_window)
+    add_frame.pack(pady=10)
+    for field in fields:
+        Label(add_frame, text=field).pack()
+        entry = Entry(add_frame)
+        entry.pack()
+        entries.append(entry)
+
+
+
+# Interfaz principal
+def open_main_menu(Username):
+    main_window = Toplevel(root)
+    main_window.title("Sistema Empresarial Sony")
+    main_window.geometry("800x600")
+# Mostrar mensaje de bienvenida
+    Label(main_window, text=f"¡Bienvenido, {Username}!", font=('Arial', 16, 'bold')).pack(pady=10)
+
+    Button(main_window, text="Productos", font=('Arial', 14),
+           command=lambda: crud_operations('Productos', ['nombre', 'descripcion', 'precio', 'cantidad'])).pack(pady=10)
+    Button(main_window, text="Ventas", font=('Arial', 14),
+           command=lambda: crud_operations('Ventas', ['producto_id', 'cliente', 'pais', 'cantidad', 'total', 'fecha'])).pack(pady=10)
+    Button(main_window, text="Departamentos", font=('Arial', 14),
+           command=lambda: crud_operations('Departamentos', ['nombre', 'empleados', 'presupuesto'])).pack(pady=10)
+    Button(main_window, text="Almacén", font=('Arial', 14),
+           command=open_almacen).pack(pady=10)
+    Button(main_window, text="Empleados", font=('Arial', 14), command=manage_employees).pack(pady=10)
+    Button(main_window, text="Usuarios", font=('Arial', 14),
+           command=lambda: crud_operations('Usuarios', ['username', 'password'])).pack(pady=10)
+# Función para mostrar el estado del almacén
+def open_almacen():
+    almacen_window = Toplevel(root)
+    almacen_window.title("Almacén")
+    almacen_window.geometry("600x400")
+
+    conn = sqlite3.connect('empresa_sony.sqlite')
+    cursor = conn.cursor()
+
+    # Obtener los productos
+    cursor.execute('SELECT * FROM Productos')
+    productos = cursor.fetchall()
+
+    # Crear la tabla (Treeview) para mostrar los datos
+    tree = ttk.Treeview(almacen_window, columns=("Producto", "Cantidad Restante", "Cantidad Vendida", "Ganancia Total"), show="headings")
+    tree.pack(pady=10, fill=BOTH, expand=True)
+
+    # Definir las columnas
+    tree.heading("Producto", text="Producto")
+    tree.heading("Cantidad Restante", text="Cantidad Restante")
+    tree.heading("Cantidad Vendida", text="Cantidad Vendida")
+    tree.heading("Ganancia Total", text="Ganancia Total")
+
+    # Establecer el tamaño de las columnas
+    tree.column("Producto", width=200)
+    tree.column("Cantidad Restante", width=150)
+    tree.column("Cantidad Vendida", width=150)
+    tree.column("Ganancia Total", width=150)
+
+    total_ganancia = 0
+
+    # Insertar los datos de cada producto
+    for producto in productos:
+        producto_id = producto[0]
+        nombre_producto = producto[1]
+        cantidad_inicial = producto[4]  # Columna cantidad en Productos
+
+        # Obtener las ventas de cada producto
+        cursor.execute('''SELECT SUM(cantidad), SUM(total) FROM Ventas WHERE producto_id = ?''', (producto_id,))
+        ventas = cursor.fetchone()
+
+        cantidad_vendida = ventas[0] if ventas[0] else 0
+        ganancia = ventas[1] if ventas[1] else 0
+
+        cantidad_restante = cantidad_inicial - cantidad_vendida
+
+        total_ganancia += ganancia
+
+        # Insertar cada fila en el Treeview
+        tree.insert("", "end", values=(nombre_producto, cantidad_restante, cantidad_vendida, ganancia))
+
+    # Mostrar la ganancia total al final de la tabla
+    tree.insert("", "end", values=("Total Ganancia", "", "", total_ganancia))
+
+    conn.close()
+
+
+# Inicio de sesión
+def login():
+    username = entry_user.get()
+    password = encrypt_password(entry_pass.get())
+    conn = sqlite3.connect('empresa_sony.sqlite')
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM Usuarios WHERE username = ? AND password = ?", (username, password))
+    if cursor.fetchone():
+        messagebox.showinfo("Éxito", "Inicio de sesión exitoso")
+        open_main_menu(username)  # Pasar el nombre del usuario
+    else:
+        messagebox.showerror("Error", "Usuario o contraseña incorrectos")
+    conn.close()
+
+
+# Interfaz de inicio
+root = Tk()
+root.title("Sistema Empresarial Sony")
+root.geometry("500x500")
+connect_db()
+
+# Cargar y mostrar imagen
+try:
+    sony_image = Image.open("C:/Users/david/Desktop/logo_sony.png")
+    sony_image = sony_image.resize((200, 100), Image.LANCZOS)
+    sony_photo = ImageTk.PhotoImage(sony_image)
+    logo_label = Label(root, image=sony_photo)
+    logo_label.pack(pady=10)
+except Exception as e:
+    print("Error al cargar la imagen:", e)
+
+# Título de la interfaz
+Label(root, text="Sony - Sistema de Gestión Empresarial", font=('Arial', 16, 'bold')).pack(pady=10)
+
+Label(root, text="Usuario:").pack()
+entry_user = Entry(root)
+entry_user.pack()
+Label(root, text="Contraseña:").pack()
+entry_pass = Entry(root, show="*")
+entry_pass.pack()
+Button(root, text="Iniciar Sesión", command=login).pack(pady=20)
+
+root.mainloop()
